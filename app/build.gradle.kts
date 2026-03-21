@@ -4,16 +4,17 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "com.cryptocurrency.tracker"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.cryptocurrency.tracker"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -57,9 +58,10 @@ dependencies {
 
     // Network - Retrofit & OkHttp
     implementation(libs.retrofit)
-    implementation(libs.retrofit.gson)
+    implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.kotlinx.serialization.json)
 
     // Database - Room
     implementation(libs.room.runtime)
