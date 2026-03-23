@@ -1,15 +1,14 @@
 package com.cryptocurrency.tracker.data.repository
 
 import com.cryptocurrency.tracker.core.database.CoinDao
-import com.cryptocurrency.tracker.core.database.toEntity
 import com.cryptocurrency.tracker.core.network.ApiService
 import com.cryptocurrency.tracker.core.util.Resource
 import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import okio.IOException
 import retrofit2.HttpException
+import java.io.IOException
 
 class CoinRepositoryImpl(
     private val api: ApiService,
@@ -29,7 +28,7 @@ class CoinRepositoryImpl(
 
             // 3. Update the Local Database (Delete old, Insert new)
             dao.deleteCoins()
-            dao.insertCoins(remoteCoins.map { it.toCoinEntity()})
+            dao.insertCoins(remoteCoins.map { it.toCoinEntity() })
             
         } catch (e: HttpException) {
             emit(Resource.Error(

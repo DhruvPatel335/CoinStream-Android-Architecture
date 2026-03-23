@@ -75,6 +75,7 @@ fun CoinListItemPreview() {
                 id = "bitcoin",
                 name = "Bitcoin",
                 symbol = "BTC",
+                imageUrl = "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
                 priceUsd = 65000.123,
                 changePercent24Hr = 2.45
             )
