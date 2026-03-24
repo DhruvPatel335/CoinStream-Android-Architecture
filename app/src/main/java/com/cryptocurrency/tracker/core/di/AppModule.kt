@@ -2,9 +2,9 @@ package com.cryptocurrency.tracker.core.di
 
 import android.content.Context
 import androidx.room.Room
-import com.cryptocurrency.tracker.core.database.CoinDao
-import com.cryptocurrency.tracker.core.database.CoinDatabase
-import com.cryptocurrency.tracker.core.network.ApiService
+import com.cryptocurrency.tracker.data.local.CoinDao
+import com.cryptocurrency.tracker.data.local.CoinDatabase
+import com.cryptocurrency.tracker.data.remote.ApiService
 import com.cryptocurrency.tracker.data.repository.CoinRepositoryImpl
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
 import dagger.Module

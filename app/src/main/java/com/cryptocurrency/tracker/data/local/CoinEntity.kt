@@ -1,4 +1,4 @@
-package com.cryptocurrency.tracker.core.database
+package com.cryptocurrency.tracker.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

@@ -1,6 +1,6 @@
-package com.cryptocurrency.tracker.data.network.dto
+package com.cryptocurrency.tracker.data.remote.dto
 
-import com.cryptocurrency.tracker.core.database.CoinEntity
+import com.cryptocurrency.tracker.data.local.CoinEntity
 import com.cryptocurrency.tracker.domain.model.Coin
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,8 +11,8 @@ data class CoinDto(
     val symbol: String,
     val name: String,
     @SerialName("image") val imageUrl: String,
-    @SerialName("current_price") val currentPrice: Double,
-    @SerialName("price_change_percentage_24h") val priceChange24h: Double
+    @SerialName("current_price") val currentPrice: Double? = 0.0,
+    @SerialName("price_change_percentage_24h") val priceChange24h: Double? = 0.0
 ) {
     fun toCoin(): Coin {
         return Coin(
@@ -20,8 +20,8 @@ data class CoinDto(
             symbol = symbol,
             name = name,
             imageUrl = imageUrl,
-            priceUsd = currentPrice,
-            changePercent24Hr = priceChange24h
+            priceUsd = currentPrice ?: 0.0,
+            changePercent24Hr = priceChange24h ?: 0.0
         )
     }
 
@@ -31,8 +31,8 @@ data class CoinDto(
             symbol = symbol,
             name = name,
             imageUrl = imageUrl,
-            priceUsd = currentPrice,
-            changePercent24Hr = priceChange24h
+            priceUsd = currentPrice ?: 0.0,
+            changePercent24Hr = priceChange24h ?: 0.0
         )
     }
 }

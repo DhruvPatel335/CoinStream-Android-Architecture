@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.cryptocurrency.tracker.core.util.Resource
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -19,12 +20,15 @@ class CoinViewModel @Inject constructor(
     private val _state = MutableStateFlow(CoinListState())
     val state = _state.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         loadCoins()
     }
 
-    private fun loadCoins() {
-        viewModelScope.launch {
+    fun loadCoins() {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             repository.getCoins().collect { result ->
                 when (result) {
                     is Resource.Success -> {

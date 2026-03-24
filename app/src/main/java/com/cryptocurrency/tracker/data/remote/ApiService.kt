@@ -1,6 +1,6 @@
-package com.cryptocurrency.tracker.core.network
+package com.cryptocurrency.tracker.data.remote
 
-import com.cryptocurrency.tracker.data.network.dto.CoinDto
+import com.cryptocurrency.tracker.data.remote.dto.CoinDto
 import retrofit2.http.GET
 import retrofit2.http.Query
 

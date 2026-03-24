@@ -1,7 +1,7 @@
 package com.cryptocurrency.tracker.data.repository
 
-import com.cryptocurrency.tracker.core.database.CoinDao
-import com.cryptocurrency.tracker.core.network.ApiService
+import com.cryptocurrency.tracker.data.local.CoinDao
+import com.cryptocurrency.tracker.data.remote.ApiService
 import com.cryptocurrency.tracker.core.util.Resource
 import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
@@ -18,15 +18,12 @@ class CoinRepositoryImpl(
     override fun getCoins(): Flow<Resource<List<Coin>>> = flow {
         emit(Resource.Loading())
 
-        // 1. Try to get cached data from Room first
         val localCoins = dao.getAllCoins().map { it.toCoin() }
         emit(Resource.Loading(data = localCoins))
 
         try {
-            // 2. Fetch fresh data from Network
             val remoteCoins = api.getCoins()
-
-            // 3. Update the Local Database (Delete old, Insert new)
+            
             dao.deleteCoins()
             dao.insertCoins(remoteCoins.map { it.toCoinEntity() })
             
@@ -42,7 +39,6 @@ class CoinRepositoryImpl(
             ))
         }
 
-        // 4. Emit the final updated list from the Database
         val updatedLocalCoins = dao.getAllCoins().map { it.toCoin() }
         emit(Resource.Success(updatedLocalCoins))
     }
