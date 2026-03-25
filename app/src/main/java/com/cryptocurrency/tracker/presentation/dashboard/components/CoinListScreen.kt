@@ -1,5 +1,6 @@
 package com.cryptocurrency.tracker.presentation.dashboard.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,8 @@ import com.cryptocurrency.tracker.presentation.dashboard.CoinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinListScreen(
-    viewModel: CoinViewModel
+    viewModel: CoinViewModel,
+    onCoinClick: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -63,7 +65,9 @@ fun CoinListScreen(
                     items(state.coins) { coin ->
                         CoinListItem(
                             coin = coin,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onCoinClick(coin.id) }
                         )
                     }
                 }
