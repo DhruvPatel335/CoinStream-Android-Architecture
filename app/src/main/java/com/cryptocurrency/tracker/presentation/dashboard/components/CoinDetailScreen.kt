@@ -1,5 +1,6 @@
 package com.cryptocurrency.tracker.presentation.dashboard.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,11 +25,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cryptocurrency.tracker.presentation.dashboard.CoinDetailViewModel
 
@@ -85,10 +87,29 @@ fun CoinDetailScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (coin.sparkline.isNotEmpty()) {
+                        Text(
+                            text = "Last 7 Days Trend",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SparklineChart(
+                            data = coin.sparkline,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            color = if (coin.changePercent24Hr >= 0) Color.Green else Color.Red
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                     val changeColor = if (coin.changePercent24Hr >= 0) Color.Green else Color.Red
                     Text(
-                        text = "${if (coin.changePercent24Hr >= 0) "+" else ""}${String.format("%.2f", coin.changePercent24Hr)}%",
+                        text = "24h Change: ${if (coin.changePercent24Hr >= 0) "+" else ""}${String.format("%.2f", coin.changePercent24Hr)}%",
                         color = changeColor,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
@@ -114,5 +135,42 @@ fun CoinDetailScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun SparklineChart(
+    data: List<Double>,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Green
+) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val maxPrice = data.maxOrNull() ?: 0.0
+        val minPrice = data.minOrNull() ?: 0.0
+        val priceRange = maxPrice - minPrice
+        
+        val path = Path()
+        data.forEachIndexed { index, price ->
+            val x = index * (width / (data.size - 1))
+            val y = if (priceRange == 0.0) {
+                height / 2
+            } else {
+                height - ((price - minPrice) / priceRange * height).toFloat()
+            }
+            
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
+        
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = 2.dp.toPx())
+        )
     }
 }

@@ -6,5 +6,6 @@ data class Coin(
     val symbol: String,
     val imageUrl: String,
     val priceUsd: Double,
-    val changePercent24Hr: Double
+    val changePercent24Hr: Double,
+    val sparkline: List<Double> = emptyList()
 )

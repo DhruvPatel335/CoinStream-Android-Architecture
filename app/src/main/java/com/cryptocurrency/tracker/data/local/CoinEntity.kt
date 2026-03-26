@@ -11,7 +11,8 @@ data class CoinEntity(
     val symbol: String,
     val imageUrl: String,
     val priceUsd: Double,
-    val changePercent24Hr: Double
+    val changePercent24Hr: Double,
+    val sparkline: List<Double> = emptyList()
 ) {
     fun toCoin(): Coin {
         return Coin(
@@ -20,7 +21,8 @@ data class CoinEntity(
             symbol = symbol,
             imageUrl = imageUrl,
             priceUsd = priceUsd,
-            changePercent24Hr = changePercent24Hr
+            changePercent24Hr = changePercent24Hr,
+            sparkline = sparkline
         )
     }
 }
@@ -32,6 +34,7 @@ fun Coin.toEntity(): CoinEntity {
         symbol = symbol,
         imageUrl = imageUrl,
         priceUsd = priceUsd,
-        changePercent24Hr = changePercent24Hr
+        changePercent24Hr = changePercent24Hr,
+        sparkline = sparkline
     )
 }

@@ -12,7 +12,8 @@ data class CoinDto(
     val name: String,
     @SerialName("image") val imageUrl: String,
     @SerialName("current_price") val currentPrice: Double? = 0.0,
-    @SerialName("price_change_percentage_24h") val priceChange24h: Double? = 0.0
+    @SerialName("price_change_percentage_24h") val priceChange24h: Double? = 0.0,
+    @SerialName("sparkline_in_7d") val sparklineIn7d: SparklineDto? = null
 ) {
     fun toCoin(): Coin {
         return Coin(
@@ -21,7 +22,8 @@ data class CoinDto(
             name = name,
             imageUrl = imageUrl,
             priceUsd = currentPrice ?: 0.0,
-            changePercent24Hr = priceChange24h ?: 0.0
+            changePercent24Hr = priceChange24h ?: 0.0,
+            sparkline = sparklineIn7d?.price ?: emptyList()
         )
     }
 
@@ -36,3 +38,8 @@ data class CoinDto(
         )
     }
 }
+
+@Serializable
+data class SparklineDto(
+    @SerialName("price") val price: List<Double>? = emptyList()
+)

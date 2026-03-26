@@ -2,6 +2,8 @@ package com.cryptocurrency.tracker.core.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.cryptocurrency.tracker.data.local.CoinDao
 import com.cryptocurrency.tracker.data.local.CoinDatabase
 import com.cryptocurrency.tracker.data.remote.ApiService
@@ -49,6 +51,12 @@ object AppModule {
             .create(ApiService::class.java)
     }
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE coins ADD COLUMN sparkline TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideCoinDatabase(@ApplicationContext context: Context): CoinDatabase {
@@ -56,7 +64,9 @@ object AppModule {
             context,
             CoinDatabase::class.java,
             "coin_db"
-        ).build()
+        )
+        .addMigrations(MIGRATION_1_2)
+        .build()
     }
 
     @Provides
