@@ -24,6 +24,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -87,7 +89,7 @@ fun CoinDetailScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     
                     if (coin.sparkline.isNotEmpty()) {
                         Text(
@@ -96,7 +98,7 @@ fun CoinDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Start
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         SparklineChart(
                             data = coin.sparkline,
                             modifier = Modifier
@@ -106,7 +108,7 @@ fun CoinDetailScreen(
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     val changeColor = if (coin.changePercent24Hr >= 0) Color.Green else Color.Red
                     Text(
                         text = "24h Change: ${if (coin.changePercent24Hr >= 0) "+" else ""}${String.format("%.2f", coin.changePercent24Hr)}%",
@@ -144,33 +146,52 @@ fun SparklineChart(
     modifier: Modifier = Modifier,
     color: Color = Color.Green
 ) {
+    if (data.size < 2) return
+
+    val strokeWidth = 2.dp
+
     Canvas(modifier = modifier) {
         val width = size.width
         val height = size.height
         val maxPrice = data.maxOrNull() ?: 0.0
         val minPrice = data.minOrNull() ?: 0.0
-        val priceRange = maxPrice - minPrice
+        val priceRange = (maxPrice - minPrice).coerceAtLeast(0.000001)
         
-        val path = Path()
-        data.forEachIndexed { index, price ->
+        val verticalPadding = 8.dp.toPx()
+        val usableHeight = height - (verticalPadding * 2)
+
+        val points = data.mapIndexed { index, price ->
             val x = index * (width / (data.size - 1))
-            val y = if (priceRange == 0.0) {
-                height / 2
-            } else {
-                height - ((price - minPrice) / priceRange * height).toFloat()
-            }
-            
-            if (index == 0) {
-                path.moveTo(x, y)
-            } else {
-                path.lineTo(x, y)
+            val y = verticalPadding + (usableHeight - ((price - minPrice) / priceRange * usableHeight)).toFloat()
+            Offset(x, y)
+        }
+
+        val strokePath = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            for (i in 1 until points.size) {
+                lineTo(points[i].x, points[i].y)
             }
         }
-        
+
+        val fillPath = Path().apply {
+            addPath(strokePath)
+            lineTo(width, height)
+            lineTo(0f, height)
+            close()
+        }
+
         drawPath(
-            path = path,
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(color.copy(alpha = 0.3f), Color.Transparent),
+                endY = height
+            )
+        )
+
+        drawPath(
+            path = strokePath,
             color = color,
-            style = Stroke(width = 2.dp.toPx())
+            style = Stroke(width = strokeWidth.toPx())
         )
     }
 }

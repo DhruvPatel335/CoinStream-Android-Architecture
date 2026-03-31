@@ -34,7 +34,8 @@ data class CoinDto(
             name = name,
             imageUrl = imageUrl,
             priceUsd = currentPrice ?: 0.0,
-            changePercent24Hr = priceChange24h ?: 0.0
+            changePercent24Hr = priceChange24h ?: 0.0,
+            sparkline = sparklineIn7d?.price ?: emptyList() // Added this line
         )
     }
 }
