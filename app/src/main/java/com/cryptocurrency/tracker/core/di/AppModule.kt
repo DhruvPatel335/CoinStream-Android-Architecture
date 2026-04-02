@@ -57,6 +57,18 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE coins ADD COLUMN marketCap REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN marketCapRank INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN totalVolume REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN high24h REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN low24h REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN ath REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE coins ADD COLUMN atl REAL NOT NULL DEFAULT 0.0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideCoinDatabase(@ApplicationContext context: Context): CoinDatabase {
@@ -65,7 +77,7 @@ object AppModule {
             CoinDatabase::class.java,
             "coin_db"
         )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
     }
 
