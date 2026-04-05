@@ -6,11 +6,10 @@ import com.cryptocurrency.tracker.core.util.Resource
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 @HiltViewModel
 class CoinViewModel @Inject constructor(
@@ -18,12 +17,26 @@ class CoinViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinListState())
-    val state = _state.asStateFlow()
+    
+    val state = _state.map { state ->
+        val filtered = when (state.selectedFilter) {
+            CoinFilter.ALL -> state.coins
+            CoinFilter.TOP_GAINERS -> state.coins.sortedByDescending { it.changePercent24Hr }
+            CoinFilter.CHANGE_24H -> state.coins.sortedByDescending { abs(it.changePercent24Hr) }
+            CoinFilter.TOP_50 -> state.coins.sortedByDescending { it.marketCap }.take(50)
+            CoinFilter.MARKET_CAP -> state.coins.sortedByDescending { it.marketCap }
+        }
+        state.copy(coins = filtered)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CoinListState())
 
     private var loadJob: Job? = null
 
     init {
         loadCoins()
+    }
+
+    fun onFilterSelected(filter: CoinFilter) {
+        _state.update { it.copy(selectedFilter = filter) }
     }
 
     fun loadCoins() {
