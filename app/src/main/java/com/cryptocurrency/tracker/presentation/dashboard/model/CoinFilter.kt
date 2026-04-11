@@ -1,4 +1,4 @@
-package com.cryptocurrency.tracker.presentation.dashboard
+package com.cryptocurrency.tracker.presentation.dashboard.model
 
 enum class CoinFilter(val label: String) {
     ALL("All"),

@@ -1,4 +1,4 @@
-package com.cryptocurrency.tracker.presentation.dashboard
+package com.cryptocurrency.tracker.presentation.dashboard.model
 
 import com.cryptocurrency.tracker.domain.model.Coin
 

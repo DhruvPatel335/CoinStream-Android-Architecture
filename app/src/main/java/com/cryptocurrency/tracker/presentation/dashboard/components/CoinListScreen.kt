@@ -15,8 +15,6 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,23 +24,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cryptocurrency.tracker.core.util.shimmerEffect
-import com.cryptocurrency.tracker.presentation.dashboard.CoinFilter
-import com.cryptocurrency.tracker.presentation.dashboard.CoinViewModel
+import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
+import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinListScreen(
-    viewModel: CoinViewModel,
-    onCoinClick: (String) -> Unit
+    state: CoinListState,
+    onCoinClick: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onFilterSelected: (CoinFilter) -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
-
     Scaffold(
         containerColor = Color.Black
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = state.isLoading,
-            onRefresh = { viewModel.loadCoins() },
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -63,6 +61,7 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
+                // Search Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -90,6 +89,7 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
+                // Filter Chips
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -103,7 +103,7 @@ fun CoinListScreen(
                                     if (isSelected) Modifier.border(1.dp, Color(0xFFE9B23E), RoundedCornerShape(20.dp))
                                     else Modifier
                                 )
-                                .clickable { viewModel.onFilterSelected(filter) }
+                                .clickable { onFilterSelected(filter) }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Text(
@@ -118,6 +118,7 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
+                // Headers
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -145,6 +146,7 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
+                // Coin List
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (state.isLoading && state.coins.isEmpty()) {
                         items(10) {
@@ -165,7 +167,7 @@ fun CoinListScreen(
 
             if (state.error != null && state.coins.isEmpty()) {
                 Text(
-                    text = state.error!!,
+                    text = state.error,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
