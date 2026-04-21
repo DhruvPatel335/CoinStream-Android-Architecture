@@ -38,11 +38,16 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideApiService(okHttpClient: OkHttpClient): ApiService {
-        val json = Json {
+    fun provideJson(): Json {
+        return Json {
             ignoreUnknownKeys = true
             coerceInputValues = true
         }
+    }
+
+    @Provides
+    @Singleton
+    fun provideApiService(okHttpClient: OkHttpClient, json: Json): ApiService {
         return Retrofit.Builder()
             .baseUrl("https://api.coingecko.com/api/v3/")
             .client(okHttpClient)

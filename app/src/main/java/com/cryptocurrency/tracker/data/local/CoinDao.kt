@@ -4,9 +4,13 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CoinDao {
+    @Query("SELECT * FROM coins")
+    fun observeAllCoins(): Flow<List<CoinEntity>>
+
     @Query("SELECT * FROM coins")
     suspend fun getAllCoins(): List<CoinEntity>
 
@@ -18,4 +22,7 @@ interface CoinDao {
 
     @Query("SELECT * FROM coins WHERE id = :id")
     suspend fun getCoinById(id: String): CoinEntity?
+
+    @Query("UPDATE coins SET priceUsd = :price, changePercent24Hr = :changePercent WHERE symbol = :symbol")
+    suspend fun updateCoinPrice(symbol: String, price: Double, changePercent: Double)
 }

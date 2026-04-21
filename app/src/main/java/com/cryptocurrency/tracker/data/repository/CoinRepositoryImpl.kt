@@ -7,6 +7,7 @@ import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.domain.repository.CoinRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -41,6 +42,12 @@ class CoinRepositoryImpl(
 
         val updatedLocalCoins = dao.getAllCoins().map { it.toCoin() }
         emit(Resource.Success(updatedLocalCoins))
+    }
+
+    override fun observeCoins(): Flow<List<Coin>> {
+        return dao.observeAllCoins().map { entities ->
+            entities.map { it.toCoin() }
+        }
     }
 
     override suspend fun getCoinById(id: String): Coin? {

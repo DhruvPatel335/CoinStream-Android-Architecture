@@ -3,7 +3,10 @@ package com.cryptocurrency.tracker.presentation.dashboard.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocurrency.tracker.core.util.Resource
+import com.cryptocurrency.tracker.data.remote.websocket.BinanceWebSocketClient
 import com.cryptocurrency.tracker.domain.use_case.GetCoinsUseCase
+import com.cryptocurrency.tracker.domain.use_case.ObserveCoinsUseCase
+import com.cryptocurrency.tracker.domain.use_case.UpdateCoinPriceUseCase
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,18 +18,21 @@ import kotlin.math.abs
 
 @HiltViewModel
 class CoinViewModel @Inject constructor(
-    private val getCoinsUseCase: GetCoinsUseCase
+    private val getCoinsUseCase: GetCoinsUseCase,
+    private val observeCoinsUseCase: ObserveCoinsUseCase,
+    private val updateCoinPriceUseCase: UpdateCoinPriceUseCase,
+    private val webSocketClient: BinanceWebSocketClient
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinListState())
     
-    val state = _state.map { state ->
+    val state = _state.combine(observeCoinsUseCase()) { state, coins ->
         val filtered = when (state.selectedFilter) {
-            CoinFilter.ALL -> state.coins
-            CoinFilter.TOP_GAINERS -> state.coins.sortedByDescending { it.changePercent24Hr }
-            CoinFilter.CHANGE_24H -> state.coins.sortedByDescending { abs(it.changePercent24Hr) }
-            CoinFilter.TOP_50 -> state.coins.sortedByDescending { it.marketCap }.take(50)
-            CoinFilter.MARKET_CAP -> state.coins.sortedByDescending { it.marketCap }
+            CoinFilter.ALL -> coins
+            CoinFilter.TOP_GAINERS -> coins.sortedByDescending { it.changePercent24Hr }
+            CoinFilter.CHANGE_24H -> coins.sortedByDescending { abs(it.changePercent24Hr) }
+            CoinFilter.TOP_50 -> coins.sortedByDescending { it.marketCap }.take(50)
+            CoinFilter.MARKET_CAP -> coins.sortedByDescending { it.marketCap }
         }
         state.copy(coins = filtered)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CoinListState())
@@ -35,6 +41,7 @@ class CoinViewModel @Inject constructor(
 
     init {
         loadCoins()
+        observeWebSocketUpdates()
     }
 
     fun onFilterSelected(filter: CoinFilter) {
@@ -45,29 +52,37 @@ class CoinViewModel @Inject constructor(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             getCoinsUseCase().collect { result ->
-                when (result) {
-                    is Resource.Success -> {
-                        _state.update { it.copy(
-                            coins = result.data ?: emptyList(),
-                            isLoading = false,
-                            error = null
-                        ) }
-                    }
-                    is Resource.Error -> {
-                        _state.update { it.copy(
-                            coins = result.data ?: emptyList(),
-                            isLoading = false,
-                            error = result.message
-                        ) }
-                    }
-                    is Resource.Loading -> {
-                        _state.update { it.copy(
-                            coins = result.data ?: emptyList(),
-                            isLoading = true
-                        ) }
-                    }
+                _state.update { it.copy(isLoading = result is Resource.Loading, error = if (result is Resource.Error) result.message else null) }
+                
+                if (result is Resource.Success && result.data != null) {
+                    val symbols = result.data.map { it.symbol }
+                    webSocketClient.connect(symbols)
                 }
             }
         }
+    }
+
+    private fun observeWebSocketUpdates() {
+        viewModelScope.launch {
+            webSocketClient.tickerFlow.collect { ticker ->
+                // Binance returns "BTCUSDT", we need "btc"
+                val coinSymbol = ticker.symbol
+                    .replace("USDT", "")
+                    .lowercase()
+                
+                // Update the database with the latest price from the WebSocket.
+                // The UI observes the database via Flow and will recompose automatically.
+                updateCoinPriceUseCase(
+                    symbol = coinSymbol,
+                    price = ticker.price.toDoubleOrNull() ?: 0.0,
+                    changePercent = ticker.priceChangePercent.toDoubleOrNull() ?: 0.0
+                )
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        webSocketClient.disconnect()
     }
 }
