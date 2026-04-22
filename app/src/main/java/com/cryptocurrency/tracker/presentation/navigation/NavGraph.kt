@@ -27,9 +27,11 @@ fun NavGraph(
         composable(route = Screen.CoinList.route) {
             val viewModel: CoinViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val livePrices by viewModel.livePrices.collectAsState()
             
             CoinListScreen(
                 state = state,
+                livePrices = livePrices,
                 onCoinClick = { coinId ->
                     navController.navigate(Screen.CoinDetail.createRoute(coinId))
                 },

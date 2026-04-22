@@ -26,6 +26,10 @@ class CoinViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CoinListState())
     
+    // Live price updates held in memory for maximum performance (SDE-2 optimization)
+    private val _livePrices = MutableStateFlow<Map<String, Pair<Double, Double>>>(emptyMap())
+    val livePrices = _livePrices.asStateFlow()
+
     val state = _state.combine(observeCoinsUseCase()) { state, coins ->
         val filtered = when (state.selectedFilter) {
             CoinFilter.ALL -> coins
@@ -65,17 +69,20 @@ class CoinViewModel @Inject constructor(
     private fun observeWebSocketUpdates() {
         viewModelScope.launch {
             webSocketClient.tickerFlow.collect { ticker ->
-                // Binance returns "BTCUSDT", we need "btc"
                 val coinSymbol = ticker.symbol
                     .replace("USDT", "")
                     .lowercase()
                 
-                // Update the database with the latest price from the WebSocket.
-                // The UI observes the database via Flow and will recompose automatically.
+                // 1. Update In-Memory state for immediate UI reaction (High frequency)
+                val price = ticker.price.toDoubleOrNull() ?: 0.0
+                val change = ticker.priceChangePercent.toDoubleOrNull() ?: 0.0
+                _livePrices.update { it + (coinSymbol to (price to change)) }
+
+                // 2. Persist to DB periodically or in background (lower priority)
                 updateCoinPriceUseCase(
                     symbol = coinSymbol,
-                    price = ticker.price.toDoubleOrNull() ?: 0.0,
-                    changePercent = ticker.priceChangePercent.toDoubleOrNull() ?: 0.0
+                    price = price,
+                    changePercent = change
                 )
             }
         }

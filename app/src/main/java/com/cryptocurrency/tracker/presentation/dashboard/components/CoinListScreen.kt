@@ -31,6 +31,7 @@ import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 @Composable
 fun CoinListScreen(
     state: CoinListState,
+    livePrices: Map<String, Pair<Double, Double>>,
     onCoinClick: (String) -> Unit,
     onRefresh: () -> Unit,
     onFilterSelected: (CoinFilter) -> Unit
@@ -153,9 +154,19 @@ fun CoinListScreen(
                             ShimmerCoinItem()
                         }
                     } else {
-                        items(state.coins) { coin ->
+                        items(
+                            items = state.coins,
+                            key = { it.id }
+                        ) { coin ->
+                            val livePrice = livePrices[coin.symbol.lowercase()]
+                            
                             CoinListItem(
-                                coin = coin,
+                                coin = if (livePrice != null) {
+                                    coin.copy(
+                                        priceUsd = livePrice.first,
+                                        changePercent24Hr = livePrice.second
+                                    )
+                                } else coin,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onCoinClick(coin.id) }
