@@ -2,12 +2,15 @@ package com.cryptocurrency.tracker.presentation.dashboard.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -21,50 +24,65 @@ fun SparklineChart(
 ) {
     if (data.size < 2) return
 
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
-        val maxPrice = data.maxOrNull() ?: 0.0
-        val minPrice = data.minOrNull() ?: 0.0
-        val priceRange = (maxPrice - minPrice).coerceAtLeast(0.000001)
-        
-        val verticalPadding = 2.dp.toPx()
-        val usableHeight = height - (verticalPadding * 2)
+    val density = LocalDensity.current
+    val strokeWidthPx = remember(strokeWidth, density) {
+        with(density) { strokeWidth.toPx() }
+    }
+    val verticalPaddingPx = remember(density) {
+        with(density) { 2.dp.toPx() }
+    }
 
-        val points = data.mapIndexed { index, price ->
-            val x = index * (width / (data.size - 1))
-            val y = verticalPadding + (usableHeight - ((price - minPrice) / priceRange * usableHeight)).toFloat()
-            Offset(x, y)
-        }
+    Canvas(
+        modifier = modifier.drawWithCache {
+            val width = size.width
+            val height = size.height
+            
+            val maxPrice = data.maxOrNull() ?: 0.0
+            val minPrice = data.minOrNull() ?: 0.0
+            val priceRange = (maxPrice - minPrice).coerceAtLeast(0.000001)
+            
+            val usableHeight = height - (verticalPaddingPx * 2)
 
-        val strokePath = Path().apply {
-            moveTo(points.first().x, points.first().y)
-            for (i in 1 until points.size) {
-                lineTo(points[i].x, points[i].y)
+            val strokePath = Path().apply {
+                val firstX = 0f
+                val firstY = verticalPaddingPx + (usableHeight - ((data[0] - minPrice) / priceRange * usableHeight)).toFloat()
+                moveTo(firstX, firstY)
+                
+                for (i in 1 until data.size) {
+                    val x = i * (width / (data.size - 1))
+                    val y = verticalPaddingPx + (usableHeight - ((data[i] - minPrice) / priceRange * usableHeight)).toFloat()
+                    lineTo(x, y)
+                }
             }
-        }
 
-        if (showFill) {
-            val fillPath = Path().apply {
-                addPath(strokePath)
-                lineTo(width, height)
-                lineTo(0f, height)
-                close()
-            }
+            val fillPath = if (showFill) {
+                Path().apply {
+                    addPath(strokePath)
+                    lineTo(width, height)
+                    lineTo(0f, height)
+                    close()
+                }
+            } else null
 
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(color.copy(alpha = 0.3f), Color.Transparent),
-                    endY = height
+            onDrawBehind {
+                if (fillPath != null) {
+                    drawPath(
+                        path = fillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(color.copy(alpha = 0.3f), Color.Transparent),
+                            endY = height
+                        )
+                    )
+                }
+
+                drawPath(
+                    path = strokePath,
+                    color = color,
+                    style = Stroke(width = strokeWidthPx)
                 )
-            )
+            }
         }
-
-        drawPath(
-            path = strokePath,
-            color = color,
-            style = Stroke(width = strokeWidth.toPx())
-        )
+    ) {
+        // Drawing is handled by drawWithCache
     }
 }

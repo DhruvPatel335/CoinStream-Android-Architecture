@@ -1,64 +1,89 @@
 package com.cryptocurrency.tracker.presentation.dashboard.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.core.theme.CryptotrackerTheme
+import java.util.Locale
 
 @Composable
 fun CoinListItem(
     coin: Coin,
+    isStale: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val alpha = if (isStale) 0.5f else 1f
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = coin.imageUrl,
-            contentDescription = coin.name,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Fit
-        )
+        Box(contentAlignment = Alignment.BottomEnd) {
+            AsyncImage(
+                model = coin.imageUrl,
+                contentDescription = coin.name,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .alpha(alpha),
+                contentScale = ContentScale.Fit
+            )
+            if (isStale) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black)
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color.Gray)
+                    )
+                }
+            }
+        }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = coin.symbol.uppercase(),
+                text = remember(coin.symbol) { coin.symbol.uppercase() },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White.copy(alpha = alpha)
             )
             Text(
                 text = coin.name,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = Color.Gray.copy(alpha = alpha)
             )
         }
         
-        // Sparkline in the middle
         if (coin.sparkline.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .width(60.dp)
                     .height(30.dp)
                     .padding(horizontal = 8.dp)
+                    .alpha(alpha)
             ) {
                 SparklineChart(
                     data = coin.sparkline,
@@ -74,15 +99,18 @@ fun CoinListItem(
 
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                text = formatPrice(coin.priceUsd),
+                text = remember(coin.priceUsd) { formatPrice(coin.priceUsd) },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White.copy(alpha = alpha)
             )
             val isPositive = coin.changePercent24Hr >= 0
             Text(
-                text = "${if (isPositive) "+" else ""}${String.format("%.2f", coin.changePercent24Hr)}%",
-                color = if (isPositive) Color(0xFF2EBD85) else Color(0xFFF6465D),
+                text = remember(coin.changePercent24Hr) { 
+                    val sign = if (isPositive) "+" else ""
+                    "$sign${String.format(Locale.US, "%.2f", coin.changePercent24Hr)}%"
+                },
+                color = (if (isPositive) Color(0xFF2EBD85) else Color(0xFFF6465D)).copy(alpha = alpha),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold
             )
@@ -92,9 +120,9 @@ fun CoinListItem(
 
 private fun formatPrice(price: Double): String {
     return if (price >= 1) {
-        String.format("%.2f", price)
+        String.format(Locale.US, "%.2f", price)
     } else {
-        String.format("%.4f", price)
+        String.format(Locale.US, "%.4f", price)
     }
 }
 

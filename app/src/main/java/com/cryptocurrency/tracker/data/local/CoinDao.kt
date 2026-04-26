@@ -23,6 +23,6 @@ interface CoinDao {
     @Query("SELECT * FROM coins WHERE id = :id")
     suspend fun getCoinById(id: String): CoinEntity?
 
-    @Query("UPDATE coins SET priceUsd = :price, changePercent24Hr = :changePercent WHERE symbol = :symbol")
-    suspend fun updateCoinPrice(symbol: String, price: Double, changePercent: Double)
+    @Query("UPDATE coins SET priceUsd = :price, changePercent24Hr = :changePercent, lastUpdate = :lastUpdate WHERE symbol = :symbol AND lastUpdate < :lastUpdate")
+    suspend fun updateCoinPrice(symbol: String, price: Double, changePercent: Double, lastUpdate: Long)
 }

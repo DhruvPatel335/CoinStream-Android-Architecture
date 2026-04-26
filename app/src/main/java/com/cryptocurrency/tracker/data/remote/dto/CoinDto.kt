@@ -37,7 +37,8 @@ data class CoinDto(
             low24h = low24h ?: 0.0,
             ath = ath ?: 0.0,
             atl = atl ?: 0.0,
-            sparkline = sparklineIn7d?.price ?: emptyList()
+            sparkline = sparklineIn7d?.price ?: emptyList(),
+            lastUpdate = System.currentTimeMillis()
         )
     }
 
@@ -56,7 +57,8 @@ data class CoinDto(
             low24h = low24h ?: 0.0,
             ath = ath ?: 0.0,
             atl = atl ?: 0.0,
-            sparkline = sparklineIn7d?.price ?: emptyList()
+            sparkline = sparklineIn7d?.price ?: emptyList(),
+            lastUpdate = System.currentTimeMillis()
         )
     }
 }

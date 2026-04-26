@@ -19,7 +19,8 @@ data class CoinEntity(
     val low24h: Double = 0.0,
     val ath: Double = 0.0,
     val atl: Double = 0.0,
-    val sparkline: List<Double> = emptyList()
+    val sparkline: List<Double> = emptyList(),
+    val lastUpdate: Long = 0L
 ) {
     fun toCoin(): Coin {
         return Coin(

@@ -31,7 +31,11 @@ object AppModule {
     fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = if (com.cryptocurrency.tracker.BuildConfig.DEBUG) {
+                    HttpLoggingInterceptor.Level.BODY
+                } else {
+                    HttpLoggingInterceptor.Level.BASIC
+                }
             })
             .build()
     }
@@ -74,6 +78,12 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE coins ADD COLUMN lastUpdate INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideCoinDatabase(@ApplicationContext context: Context): CoinDatabase {
@@ -82,7 +92,7 @@ object AppModule {
             CoinDatabase::class.java,
             "coin_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
     }
 
@@ -96,8 +106,9 @@ object AppModule {
     @Singleton
     fun provideCoinRepository(
         api: ApiService,
-        dao: CoinDao
+        dao: CoinDao,
+        webSocketClient: com.cryptocurrency.tracker.data.remote.websocket.BinanceWebSocketClient
     ): CoinRepository {
-        return CoinRepositoryImpl(api, dao)
+        return CoinRepositoryImpl(api, dao, webSocketClient)
     }
 }

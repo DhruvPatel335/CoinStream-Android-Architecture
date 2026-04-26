@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BinanceTickerDto(
+    @SerialName("e") val eventType: String,
+    @SerialName("E") val eventTime: Long,
     @SerialName("s") val symbol: String, // Symbol e.g. BTCUSDT
     @SerialName("c") val price: String,  // Last price
     @SerialName("P") val priceChangePercent: String // Price change percent

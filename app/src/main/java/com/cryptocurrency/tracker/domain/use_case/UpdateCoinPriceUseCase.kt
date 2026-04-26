@@ -6,7 +6,7 @@ import javax.inject.Inject
 class UpdateCoinPriceUseCase @Inject constructor(
     private val dao: CoinDao
 ) {
-    suspend operator fun invoke(symbol: String, price: Double, changePercent: Double) {
-        dao.updateCoinPrice(symbol, price, changePercent)
+    suspend operator fun invoke(symbol: String, price: Double, changePercent: Double, lastUpdate: Long) {
+        dao.updateCoinPrice(symbol, price, changePercent, lastUpdate)
     }
 }

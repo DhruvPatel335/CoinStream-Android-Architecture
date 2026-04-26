@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.cryptocurrency.tracker.core.util.shimmerEffect
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
+import com.cryptocurrency.tracker.presentation.dashboard.model.ConnectionStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,16 +54,55 @@ fun CoinListScreen(
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                Text(
-                    text = "Markets",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Markets",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    val statusColor = when (state.connectionStatus) {
+                        ConnectionStatus.CONNECTED -> Color.Green
+                        ConnectionStatus.RECONNECTING -> Color(0xFFE9B23E)
+                        ConnectionStatus.OFFLINE -> Color.Red
+                    }
+                    
+                    val statusBg = when (state.connectionStatus) {
+                        ConnectionStatus.CONNECTED -> Color(0xFF1E3A1E)
+                        ConnectionStatus.RECONNECTING -> Color(0xFF3A311E)
+                        ConnectionStatus.OFFLINE -> Color(0xFF3A1E1E)
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(statusBg)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(statusColor)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = state.connectionStatus.name,
+                            color = statusColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Search Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -90,7 +130,6 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Filter Chips
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -119,7 +158,6 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
-                // Headers
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -147,7 +185,6 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // Coin List
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (state.isLoading && state.coins.isEmpty()) {
                         items(10) {
@@ -167,6 +204,7 @@ fun CoinListScreen(
                                         changePercent24Hr = livePrice.second
                                     )
                                 } else coin,
+                                isStale = state.isStale,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onCoinClick(coin.id) }
