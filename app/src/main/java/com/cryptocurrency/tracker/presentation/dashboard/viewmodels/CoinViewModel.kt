@@ -61,7 +61,11 @@ class CoinViewModel @Inject constructor(
             CoinFilter.TOP_50 -> coins.sortedByDescending { it.marketCap }.take(50)
             CoinFilter.MARKET_CAP -> coins.sortedByDescending { it.marketCap }
         }
-        state.copy(coins = filtered, isStale = isStale)
+        state.copy(
+            coins = filtered, 
+            isStale = isStale,
+            lastUpdateMap = lastUpdates
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CoinListState())
 
     private var loadJob: Job? = null

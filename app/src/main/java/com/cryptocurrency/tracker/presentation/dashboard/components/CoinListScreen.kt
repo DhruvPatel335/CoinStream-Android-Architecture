@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -195,16 +196,28 @@ fun CoinListScreen(
                             items = state.coins,
                             key = { it.id }
                         ) { coin ->
-                            val livePrice = livePrices[coin.symbol.lowercase()]
+                            val symbolLower = coin.symbol.lowercase()
+                            val livePrice = livePrices[symbolLower]
+                            val lastUpdate = state.lastUpdateMap[symbolLower] ?: 0L
                             
-                            CoinListItem(
-                                coin = if (livePrice != null) {
+                            val isThisCoinStale = if (lastUpdate > 0) {
+                                System.currentTimeMillis() - lastUpdate > 15000
+                            } else {
+                                state.isStale
+                            }
+
+                            val displayCoin = remember(coin, livePrice) {
+                                if (livePrice != null) {
                                     coin.copy(
                                         priceUsd = livePrice.first,
                                         changePercent24Hr = livePrice.second
                                     )
-                                } else coin,
-                                isStale = state.isStale,
+                                } else coin
+                            }
+
+                            CoinListItem(
+                                coin = displayCoin,
+                                isStale = isThisCoinStale,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onCoinClick(coin.id) }

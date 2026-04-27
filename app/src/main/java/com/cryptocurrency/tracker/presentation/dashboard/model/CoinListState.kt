@@ -14,5 +14,6 @@ data class CoinListState(
     val error: String? = null,
     val selectedFilter: CoinFilter = CoinFilter.ALL,
     val connectionStatus: ConnectionStatus = ConnectionStatus.RECONNECTING,
-    val isStale: Boolean = false
+    val isStale: Boolean = false,
+    val lastUpdateMap: Map<String, Long> = emptyMap()
 )
