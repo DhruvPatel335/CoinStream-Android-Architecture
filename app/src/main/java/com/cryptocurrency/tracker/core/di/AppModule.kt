@@ -84,6 +84,12 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `coin_remote_keys` (`coinId` TEXT NOT NULL, `prevPage` INTEGER, `nextPage` INTEGER, PRIMARY KEY(`coinId`))")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideCoinDatabase(@ApplicationContext context: Context): CoinDatabase {
@@ -92,7 +98,8 @@ object AppModule {
             CoinDatabase::class.java,
             "coin_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .fallbackToDestructiveMigration() // Just in case during development
         .build()
     }
 
@@ -107,8 +114,9 @@ object AppModule {
     fun provideCoinRepository(
         api: ApiService,
         dao: CoinDao,
+        database: CoinDatabase,
         webSocketClient: com.cryptocurrency.tracker.data.remote.websocket.BinanceWebSocketClient
     ): CoinRepository {
-        return CoinRepositoryImpl(api, dao, webSocketClient)
+        return CoinRepositoryImpl(api, dao, database, webSocketClient)
     }
 }

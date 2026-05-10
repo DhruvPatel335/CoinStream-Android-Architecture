@@ -25,15 +25,11 @@ fun SparklineChart(
     if (data.size < 2) return
 
     val density = LocalDensity.current
-    val strokeWidthPx = remember(strokeWidth, density) {
-        with(density) { strokeWidth.toPx() }
-    }
-    val verticalPaddingPx = remember(density) {
-        with(density) { 2.dp.toPx() }
-    }
-
-    Canvas(
-        modifier = modifier.drawWithCache {
+    
+    // Optimization: Cache the drawing logic to prevent re-calculating paths during every recomposition
+    // Especially important when parent recomposes frequently due to price updates.
+    val drawModifier = remember(data, color, showFill, strokeWidth, density) {
+        Modifier.drawWithCache {
             val width = size.width
             val height = size.height
             
@@ -41,6 +37,7 @@ fun SparklineChart(
             val minPrice = data.minOrNull() ?: 0.0
             val priceRange = (maxPrice - minPrice).coerceAtLeast(0.000001)
             
+            val verticalPaddingPx = 2.dp.toPx()
             val usableHeight = height - (verticalPaddingPx * 2)
 
             val strokePath = Path().apply {
@@ -64,6 +61,8 @@ fun SparklineChart(
                 }
             } else null
 
+            val strokeWidthPx = strokeWidth.toPx()
+
             onDrawBehind {
                 if (fillPath != null) {
                     drawPath(
@@ -82,7 +81,9 @@ fun SparklineChart(
                 )
             }
         }
-    ) {
+    }
+
+    Canvas(modifier = modifier.then(drawModifier)) {
         // Drawing is handled by drawWithCache
     }
 }

@@ -2,139 +2,108 @@ package com.cryptocurrency.tracker.presentation.dashboard.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cryptocurrency.tracker.core.util.Resource
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.cryptocurrency.tracker.data.remote.websocket.BinanceWebSocketClient
-import com.cryptocurrency.tracker.domain.use_case.GetCoinsUseCase
-import com.cryptocurrency.tracker.domain.use_case.ObserveCoinsUseCase
-import com.cryptocurrency.tracker.domain.use_case.UpdateCoinPriceUseCase
+import com.cryptocurrency.tracker.domain.model.Coin
+import com.cryptocurrency.tracker.domain.use_case.ObserveCoinsPagedUseCase
+import com.cryptocurrency.tracker.domain.use_case.UpdateWebSocketSubscriptionsUseCase
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 import com.cryptocurrency.tracker.presentation.dashboard.model.ConnectionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.abs
 
 @HiltViewModel
 class CoinViewModel @Inject constructor(
-    private val getCoinsUseCase: GetCoinsUseCase,
-    private val observeCoinsUseCase: ObserveCoinsUseCase,
-    private val updateCoinPriceUseCase: UpdateCoinPriceUseCase,
+    private val observeCoinsPagedUseCase: ObserveCoinsPagedUseCase,
+    private val updateWebSocketSubscriptionsUseCase: UpdateWebSocketSubscriptionsUseCase,
     private val webSocketClient: BinanceWebSocketClient
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinListState())
+    val state = _state.asStateFlow()
+
+    val pagedCoins: Flow<PagingData<Coin>> = observeCoinsPagedUseCase()
+        .cachedIn(viewModelScope)
     
-    // Live price updates held in memory for maximum performance (SDE-2 optimization)
+    // Live price updates held in memory for maximum performance
     private val _livePrices = MutableStateFlow<Map<String, Pair<Double, Double>>>(emptyMap())
     val livePrices = _livePrices.asStateFlow()
 
     // Last update timestamp per coin for staleness tracking
     private val _lastUpdateMap = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val lastUpdateMap = _lastUpdateMap.asStateFlow()
 
-    // SharedFlow to buffer DB updates for debouncing
-    private val _dbUpdateQueue = MutableSharedFlow<UpdateParams>(
-        extraBufferCapacity = 100,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-
-    private data class UpdateParams(val symbol: String, val price: Double, val changePercent: Double, val lastUpdate: Long)
-
-    val state = combine(
-        _state,
-        observeCoinsUseCase(),
-        _lastUpdateMap
-    ) { state, coins, lastUpdates ->
-        val currentTime = System.currentTimeMillis()
-        val isStale = lastUpdates.values.any { currentTime - it > 15000 } || 
-                     (lastUpdates.isEmpty() && !state.isLoading && state.connectionStatus == ConnectionStatus.OFFLINE)
-
-        val filtered = when (state.selectedFilter) {
-            CoinFilter.ALL -> coins
-            CoinFilter.TOP_GAINERS -> coins.sortedByDescending { it.changePercent24Hr }
-            CoinFilter.CHANGE_24H -> coins.sortedByDescending { abs(it.changePercent24Hr) }
-            CoinFilter.TOP_50 -> coins.sortedByDescending { it.marketCap }.take(50)
-            CoinFilter.MARKET_CAP -> coins.sortedByDescending { it.marketCap }
-        }
-        state.copy(
-            coins = filtered, 
-            isStale = isStale,
-            lastUpdateMap = lastUpdates
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CoinListState())
-
-    private var loadJob: Job? = null
+    private val visibleSymbolsFlow = MutableStateFlow<List<String>>(emptyList())
+    
+    // Internal buffer for high-frequency updates
+    private val pendingLivePrices = MutableStateFlow<Map<String, Pair<Double, Double>>>(emptyMap())
+    private val pendingLastUpdates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
     init {
-        loadCoins()
         observeWebSocketUpdates()
-        processDbUpdates()
         monitorStaleness()
+        handleVisibleSymbols()
+        syncThrottledUpdates()
     }
 
-    private fun monitorStaleness() {
+    private fun syncThrottledUpdates() {
         viewModelScope.launch {
             while (true) {
-                // Trigger recomposition every 5s to check staleness
-                _state.update { it.copy() }
-                kotlinx.coroutines.delay(5000)
+                delay(200) // Max 5Hz UI updates to prevent frame drops
+                if (pendingLivePrices.value.isNotEmpty()) {
+                    val prices = pendingLivePrices.value
+                    val updates = pendingLastUpdates.value
+                    
+                    _livePrices.update { it + prices }
+                    _lastUpdateMap.update { it + updates }
+                    
+                    pendingLivePrices.value = emptyMap()
+                    pendingLastUpdates.value = emptyMap()
+                }
             }
         }
     }
 
     @OptIn(FlowPreview::class)
-    private fun processDbUpdates() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _dbUpdateQueue
-                .groupBy { it.symbol }
-                .collect { group ->
-                    launch {
-                        group.value
-                            .debounce(2000)
-                            .collect { params ->
-                                updateCoinPriceUseCase(params.symbol, params.price, params.changePercent, params.lastUpdate)
-                            }
-                    }
+    private fun handleVisibleSymbols() {
+        viewModelScope.launch {
+            visibleSymbolsFlow
+                .debounce(1000) // Wait for 1s of stability before reconnecting WS
+                .distinctUntilChanged()
+                .collect { symbols ->
+                    updateWebSocketSubscriptionsUseCase(symbols)
                 }
         }
     }
 
-    private fun <T, K> Flow<T>.groupBy(keySelector: (T) -> K): Flow<GroupedFlow<K, T>> = flow {
-        val groups = mutableMapOf<K, MutableSharedFlow<T>>()
-        collect { value ->
-            val key = keySelector(value)
-            val flow = groups.getOrPut(key) {
-                MutableSharedFlow<T>(extraBufferCapacity = 1).also {
-                    emit(GroupedFlow(key, it))
-                }
+    fun onVisibleCoinsChanged(symbols: List<String>) {
+        visibleSymbolsFlow.value = symbols
+    }
+
+    private fun monitorStaleness() {
+        viewModelScope.launch {
+            while (true) {
+                // Force check every 5s for staleness indicators
+                _state.update { it.copy() }
+                delay(5000)
             }
-            flow.emit(value)
         }
     }
-
-    private data class GroupedFlow<K, T>(val key: K, val value: Flow<T>)
 
     fun onFilterSelected(filter: CoinFilter) {
         _state.update { it.copy(selectedFilter = filter) }
-    }
-
-    fun loadCoins() {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
-            getCoinsUseCase().collect { result ->
-                _state.update { 
-                    it.copy(
-                        isLoading = result is Resource.Loading, 
-                        error = if (result is Resource.Error) result.message else null
-                    ) 
-                }
-            }
-        }
     }
 
     private fun observeWebSocketUpdates() {
@@ -149,7 +118,7 @@ class CoinViewModel @Inject constructor(
             }
         }
 
-        // Process ticker updates
+        // Process ticker updates for UI only
         viewModelScope.launch(Dispatchers.IO) {
             webSocketClient.tickerFlow.collect { ticker ->
                 val coinSymbol = ticker.symbol
@@ -159,12 +128,9 @@ class CoinViewModel @Inject constructor(
                 val price = ticker.price.toDoubleOrNull() ?: 0.0
                 val change = ticker.priceChangePercent.toDoubleOrNull() ?: 0.0
                 
-                // 1. Update In-Memory state
-                _livePrices.update { it + (coinSymbol to (price to change)) }
-                _lastUpdateMap.update { it + (coinSymbol to ticker.eventTime) }
-
-                // 2. Queue for DB update
-                _dbUpdateQueue.emit(UpdateParams(coinSymbol, price, change, ticker.eventTime))
+                // Buffer for Throttled UI update (UI only)
+                pendingLivePrices.update { it + (coinSymbol to (price to change)) }
+                pendingLastUpdates.update { it + (coinSymbol to ticker.eventTime) }
             }
         }
     }

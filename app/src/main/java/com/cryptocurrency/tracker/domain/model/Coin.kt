@@ -1,5 +1,8 @@
 package com.cryptocurrency.tracker.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Coin(
     val id: String,
     val name: String,

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,8 +15,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,26 +24,58 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import com.cryptocurrency.tracker.core.util.shimmerEffect
+import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 import com.cryptocurrency.tracker.presentation.dashboard.model.ConnectionStatus
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinListScreen(
     state: CoinListState,
+    pagedCoins: LazyPagingItems<Coin>,
     livePrices: Map<String, Pair<Double, Double>>,
+    lastUpdateMap: Map<String, Long>,
     onCoinClick: (String) -> Unit,
     onRefresh: () -> Unit,
-    onFilterSelected: (CoinFilter) -> Unit
+    onFilterSelected: (CoinFilter) -> Unit,
+    onVisibleCoinsChanged: (List<String>) -> Unit
 ) {
+    val listState = rememberLazyListState()
+
+    // Sync visible symbols with WebSocket subscriptions
+    // Optimized with debounce and safer item access
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
+            .debounce(200) // Don't process every single pixel move
+            .map { items ->
+                items.mapNotNull { item ->
+                    // Accessing pagedCoins on main thread is fine, but snapshot is safer
+                    if (item.index in 0 until pagedCoins.itemCount) {
+                        pagedCoins.itemSnapshotList.getOrNull(item.index)?.symbol
+                    } else null
+                }
+            }
+            .distinctUntilChanged()
+            .collect { symbols ->
+                onVisibleCoinsChanged(symbols)
+            }
+    }
+
     Scaffold(
         containerColor = Color.Black
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
-            onRefresh = onRefresh,
+            isRefreshing = pagedCoins.loadState.refresh is LoadState.Loading,
+            onRefresh = { pagedCoins.refresh() },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -53,6 +85,7 @@ fun CoinListScreen(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
             ) {
+                // ... (rest of the top part of the screen remains the same)
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Row(
@@ -186,50 +219,63 @@ fun CoinListScreen(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (state.isLoading && state.coins.isEmpty()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState
+                ) {
+                    if (pagedCoins.loadState.refresh is LoadState.Loading) {
                         items(10) {
                             ShimmerCoinItem()
                         }
                     } else {
                         items(
-                            items = state.coins,
-                            key = { it.id }
-                        ) { coin ->
-                            val symbolLower = coin.symbol.lowercase()
-                            val livePrice = livePrices[symbolLower]
-                            val lastUpdate = state.lastUpdateMap[symbolLower] ?: 0L
-                            
-                            val isThisCoinStale = if (lastUpdate > 0) {
-                                System.currentTimeMillis() - lastUpdate > 15000
-                            } else {
-                                state.isStale
-                            }
+                            count = pagedCoins.itemCount,
+                            key = pagedCoins.itemKey { it.id }
+                        ) { index ->
+                            val coin = pagedCoins[index]
+                            if (coin != null) {
+                                val symbolLower = coin.symbol.lowercase()
+                                val livePrice = livePrices[symbolLower]
+                                val lastUpdate = lastUpdateMap[symbolLower] ?: 0L
+                                
+                                // Optimization: Move logic into remembered blocks to minimize main thread work
+                                val isThisCoinStale = remember(lastUpdate, state.isStale) {
+                                    if (lastUpdate > 0) {
+                                        System.currentTimeMillis() - lastUpdate > 15000
+                                    } else {
+                                        state.isStale
+                                    }
+                                }
 
-                            val displayCoin = remember(coin, livePrice) {
-                                if (livePrice != null) {
-                                    coin.copy(
-                                        priceUsd = livePrice.first,
-                                        changePercent24Hr = livePrice.second
-                                    )
-                                } else coin
-                            }
+                                val displayCoin = remember(coin, livePrice) {
+                                    if (livePrice != null) {
+                                        coin.copy(
+                                            priceUsd = livePrice.first,
+                                            changePercent24Hr = livePrice.second
+                                        )
+                                    } else coin
+                                }
 
-                            CoinListItem(
-                                coin = displayCoin,
-                                isStale = isThisCoinStale,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onCoinClick(coin.id) }
-                            )
+                                val onItemClick = remember(coin.id) {
+                                    { onCoinClick(coin.id) }
+                                }
+
+                                CoinListItem(
+                                    coin = displayCoin,
+                                    isStale = isThisCoinStale,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(onClick = onItemClick)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            if (state.error != null && state.coins.isEmpty()) {
+            if (pagedCoins.loadState.refresh is LoadState.Error && pagedCoins.itemCount == 0) {
                 Text(
-                    text = state.error,
+                    text = (pagedCoins.loadState.refresh as LoadState.Error).error.message ?: "Unknown error",
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                     modifier = Modifier

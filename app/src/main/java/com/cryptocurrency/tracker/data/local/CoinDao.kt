@@ -1,5 +1,6 @@
 package com.cryptocurrency.tracker.data.local
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -8,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CoinDao {
-    @Query("SELECT * FROM coins")
+    @Query("SELECT * FROM coins ORDER BY marketCap DESC")
     fun observeAllCoins(): Flow<List<CoinEntity>>
+
+    @Query("SELECT * FROM coins ORDER BY marketCap DESC")
+    fun observeAllCoinsPaged(): PagingSource<Int, CoinEntity>
 
     @Query("SELECT * FROM coins")
     suspend fun getAllCoins(): List<CoinEntity>

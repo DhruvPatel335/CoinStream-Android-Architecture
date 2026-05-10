@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.cryptocurrency.tracker.presentation.dashboard.viewmodels.CoinDetailViewModel
 import com.cryptocurrency.tracker.presentation.dashboard.viewmodels.CoinViewModel
 import com.cryptocurrency.tracker.presentation.dashboard.components.CoinDetailScreen
@@ -27,17 +28,24 @@ fun NavGraph(
         composable(route = Screen.CoinList.route) {
             val viewModel: CoinViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val pagedCoins = viewModel.pagedCoins.collectAsLazyPagingItems()
             val livePrices by viewModel.livePrices.collectAsState()
+            val lastUpdateMap by viewModel.lastUpdateMap.collectAsState()
             
             CoinListScreen(
                 state = state,
+                pagedCoins = pagedCoins,
                 livePrices = livePrices,
+                lastUpdateMap = lastUpdateMap,
                 onCoinClick = { coinId ->
                     navController.navigate(Screen.CoinDetail.createRoute(coinId))
                 },
-                onRefresh = { viewModel.loadCoins() },
+                onRefresh = { pagedCoins.refresh() },
                 onFilterSelected = { filter ->
                     viewModel.onFilterSelected(filter)
+                },
+                onVisibleCoinsChanged = { symbols ->
+                    viewModel.onVisibleCoinsChanged(symbols)
                 }
             )
         }
