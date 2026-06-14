@@ -13,16 +13,17 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.cryptocurrency.tracker.domain.model.SparklineData
 
 @Composable
 fun SparklineChart(
-    data: List<Double>,
+    data: SparklineData,
     modifier: Modifier = Modifier,
     color: Color = Color.Green,
     showFill: Boolean = true,
     strokeWidth: Dp = 2.dp
 ) {
-    if (data.size < 2) return
+    if (data.values.size < 2) return
 
     val density = LocalDensity.current
     
@@ -33,8 +34,8 @@ fun SparklineChart(
             val width = size.width
             val height = size.height
             
-            val maxPrice = data.maxOrNull() ?: 0.0
-            val minPrice = data.minOrNull() ?: 0.0
+            val maxPrice = data.values.maxOrNull() ?: 0.0
+            val minPrice = data.values.minOrNull() ?: 0.0
             val priceRange = (maxPrice - minPrice).coerceAtLeast(0.000001)
             
             val verticalPaddingPx = 2.dp.toPx()
@@ -42,12 +43,12 @@ fun SparklineChart(
 
             val strokePath = Path().apply {
                 val firstX = 0f
-                val firstY = verticalPaddingPx + (usableHeight - ((data[0] - minPrice) / priceRange * usableHeight)).toFloat()
+                val firstY = verticalPaddingPx + (usableHeight - ((data.values[0] - minPrice) / priceRange * usableHeight)).toFloat()
                 moveTo(firstX, firstY)
                 
-                for (i in 1 until data.size) {
-                    val x = i * (width / (data.size - 1))
-                    val y = verticalPaddingPx + (usableHeight - ((data[i] - minPrice) / priceRange * usableHeight)).toFloat()
+                for (i in 1 until data.values.size) {
+                    val x = i * (width / (data.values.size - 1))
+                    val y = verticalPaddingPx + (usableHeight - ((data.values[i] - minPrice) / priceRange * usableHeight)).toFloat()
                     lineTo(x, y)
                 }
             }

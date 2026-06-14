@@ -1,5 +1,6 @@
 package com.cryptocurrency.tracker.presentation.dashboard.viewmodels
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -22,7 +23,17 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
+
+@Immutable
+data class LivePriceState(
+    val price: Double,
+    val change: Double,
+    val formattedPrice: String,
+    val formattedChange: String,
+    val isPositive: Boolean
+)
 
 @HiltViewModel
 class CoinViewModel @Inject constructor(
@@ -38,7 +49,7 @@ class CoinViewModel @Inject constructor(
         .cachedIn(viewModelScope)
     
     // Live price updates held in memory for maximum performance
-    private val _livePrices = MutableStateFlow<Map<String, Pair<Double, Double>>>(emptyMap())
+    private val _livePrices = MutableStateFlow<Map<String, LivePriceState>>(emptyMap())
     val livePrices = _livePrices.asStateFlow()
 
     // Last update timestamp per coin for staleness tracking
@@ -48,14 +59,18 @@ class CoinViewModel @Inject constructor(
     private val visibleSymbolsFlow = MutableStateFlow<List<String>>(emptyList())
     
     // Internal buffer for high-frequency updates
-    private val pendingLivePrices = MutableStateFlow<Map<String, Pair<Double, Double>>>(emptyMap())
+    private val pendingLivePrices = MutableStateFlow<Map<String, LivePriceState>>(emptyMap())
     private val pendingLastUpdates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
     init {
-        observeWebSocketUpdates()
-        monitorStaleness()
-        handleVisibleSymbols()
-        syncThrottledUpdates()
+        // Optimization: Delay non-critical startup work to allow the first frame to render faster
+        viewModelScope.launch {
+            delay(100)
+            observeWebSocketUpdates()
+            monitorStaleness()
+            handleVisibleSymbols()
+            syncThrottledUpdates()
+        }
     }
 
     private fun syncThrottledUpdates() {
@@ -128,8 +143,23 @@ class CoinViewModel @Inject constructor(
                 val price = ticker.price.toDoubleOrNull() ?: 0.0
                 val change = ticker.priceChangePercent.toDoubleOrNull() ?: 0.0
                 
+                val isPositive = change >= 0
+                val sign = if (isPositive) "+" else ""
+                
+                val state = LivePriceState(
+                    price = price,
+                    change = change,
+                    formattedPrice = if (price >= 1) {
+                        String.format(Locale.US, "%.2f", price)
+                    } else {
+                        String.format(Locale.US, "%.4f", price)
+                    },
+                    formattedChange = "$sign${String.format(Locale.US, "%.2f", change)}%",
+                    isPositive = isPositive
+                )
+                
                 // Buffer for Throttled UI update (UI only)
-                pendingLivePrices.update { it + (coinSymbol to (price to change)) }
+                pendingLivePrices.update { it + (coinSymbol to state) }
                 pendingLastUpdates.update { it + (coinSymbol to ticker.eventTime) }
             }
         }

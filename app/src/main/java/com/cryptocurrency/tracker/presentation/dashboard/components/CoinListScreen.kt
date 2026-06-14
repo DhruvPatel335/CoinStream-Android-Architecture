@@ -32,6 +32,7 @@ import com.cryptocurrency.tracker.domain.model.Coin
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinFilter
 import com.cryptocurrency.tracker.presentation.dashboard.model.CoinListState
 import com.cryptocurrency.tracker.presentation.dashboard.model.ConnectionStatus
+import com.cryptocurrency.tracker.presentation.dashboard.viewmodels.LivePriceState
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -41,7 +42,7 @@ import kotlinx.coroutines.flow.map
 fun CoinListScreen(
     state: CoinListState,
     pagedCoins: LazyPagingItems<Coin>,
-    livePrices: Map<String, Pair<Double, Double>>,
+    livePrices: Map<String, LivePriceState>,
     lastUpdateMap: Map<String, Long>,
     onCoinClick: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -250,8 +251,8 @@ fun CoinListScreen(
                                 val displayCoin = remember(coin, livePrice) {
                                     if (livePrice != null) {
                                         coin.copy(
-                                            priceUsd = livePrice.first,
-                                            changePercent24Hr = livePrice.second
+                                            priceUsd = livePrice.price,
+                                            changePercent24Hr = livePrice.change
                                         )
                                     } else coin
                                 }
@@ -262,6 +263,9 @@ fun CoinListScreen(
 
                                 CoinListItem(
                                     coin = displayCoin,
+                                    formattedPrice = livePrice?.formattedPrice,
+                                    formattedChange = livePrice?.formattedChange,
+                                    isPositiveChange = livePrice?.isPositive,
                                     isStale = isThisCoinStale,
                                     modifier = Modifier
                                         .fillMaxWidth()

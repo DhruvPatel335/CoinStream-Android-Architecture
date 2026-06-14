@@ -3,6 +3,9 @@ package com.cryptocurrency.tracker.domain.model
 import androidx.compose.runtime.Immutable
 
 @Immutable
+data class SparklineData(val values: List<Double>)
+
+@Immutable
 data class Coin(
     val id: String,
     val name: String,
@@ -17,6 +20,6 @@ data class Coin(
     val low24h: Double = 0.0,
     val ath: Double = 0.0,
     val atl: Double = 0.0,
-    val sparkline: List<Double> = emptyList(),
+    val sparkline: SparklineData = SparklineData(emptyList()),
     val lastUpdate: Long = 0L
 )

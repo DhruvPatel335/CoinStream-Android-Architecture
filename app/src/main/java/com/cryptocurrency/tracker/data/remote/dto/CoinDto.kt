@@ -2,6 +2,7 @@ package com.cryptocurrency.tracker.data.remote.dto
 
 import com.cryptocurrency.tracker.data.local.CoinEntity
 import com.cryptocurrency.tracker.domain.model.Coin
+import com.cryptocurrency.tracker.domain.model.SparklineData
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -37,7 +38,7 @@ data class CoinDto(
             low24h = low24h ?: 0.0,
             ath = ath ?: 0.0,
             atl = atl ?: 0.0,
-            sparkline = sparklineIn7d?.price ?: emptyList(),
+            sparkline = SparklineData(sparklineIn7d?.price ?: emptyList()),
             lastUpdate = System.currentTimeMillis()
         )
     }

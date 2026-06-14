@@ -145,7 +145,7 @@ fun CoinDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (coin.sparkline.isNotEmpty()) {
+                    if (coin.sparkline.values.isNotEmpty()) {
                         SparklineChart(
                             data = coin.sparkline,
                             modifier = Modifier

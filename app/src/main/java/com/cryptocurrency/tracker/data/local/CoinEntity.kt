@@ -3,6 +3,7 @@ package com.cryptocurrency.tracker.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.cryptocurrency.tracker.domain.model.Coin
+import com.cryptocurrency.tracker.domain.model.SparklineData
 
 @Entity(tableName = "coins")
 data class CoinEntity(
@@ -37,7 +38,7 @@ data class CoinEntity(
             low24h = low24h,
             ath = ath,
             atl = atl,
-            sparkline = sparkline
+            sparkline = SparklineData(sparkline)
         )
     }
 }
@@ -57,6 +58,6 @@ fun Coin.toEntity(): CoinEntity {
         low24h = low24h,
         ath = ath,
         atl = atl,
-        sparkline = sparkline
+        sparkline = sparkline.values
     )
 }

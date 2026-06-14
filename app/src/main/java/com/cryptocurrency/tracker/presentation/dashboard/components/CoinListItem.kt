@@ -18,12 +18,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.cryptocurrency.tracker.domain.model.Coin
+import com.cryptocurrency.tracker.domain.model.SparklineData
 import com.cryptocurrency.tracker.core.theme.CryptotrackerTheme
 import java.util.Locale
 
 @Composable
 fun CoinListItem(
     coin: Coin,
+    formattedPrice: String? = null,
+    formattedChange: String? = null,
+    isPositiveChange: Boolean? = null,
     isStale: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -77,7 +81,7 @@ fun CoinListItem(
             )
         }
         
-        if (coin.sparkline.isNotEmpty()) {
+        if (coin.sparkline.values.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .width(60.dp)
@@ -97,24 +101,43 @@ fun CoinListItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = remember(coin.priceUsd) { formatPrice(coin.priceUsd) },
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = alpha)
-            )
-            val isPositive = coin.changePercent24Hr >= 0
-            Text(
-                text = remember(coin.changePercent24Hr) { 
-                    val sign = if (isPositive) "+" else ""
-                    "$sign${String.format(Locale.US, "%.2f", coin.changePercent24Hr)}%"
-                },
-                color = (if (isPositive) Color(0xFF2EBD85) else Color(0xFFF6465D)).copy(alpha = alpha),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        PriceSection(
+            priceUsd = coin.priceUsd,
+            changePercent24Hr = coin.changePercent24Hr,
+            formattedPrice = formattedPrice,
+            formattedChange = formattedChange,
+            isPositiveChange = isPositiveChange,
+            alpha = alpha
+        )
+    }
+}
+
+@Composable
+private fun PriceSection(
+    priceUsd: Double,
+    changePercent24Hr: Double,
+    formattedPrice: String?,
+    formattedChange: String?,
+    isPositiveChange: Boolean?,
+    alpha: Float
+) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = formattedPrice ?: remember(priceUsd) { formatPrice(priceUsd) },
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = alpha)
+        )
+        val isPositive = isPositiveChange ?: (changePercent24Hr >= 0)
+        Text(
+            text = formattedChange ?: remember(changePercent24Hr) {
+                val sign = if (isPositive) "+" else ""
+                "$sign${String.format(Locale.US, "%.2f", changePercent24Hr)}%"
+            },
+            color = (if (isPositive) Color(0xFF2EBD85) else Color(0xFFF6465D)).copy(alpha = alpha),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -138,7 +161,7 @@ fun CoinListItemPreview() {
                 imageUrl = "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
                 priceUsd = 19392.92,
                 changePercent24Hr = -2.09,
-                sparkline = listOf(1.0, 1.2, 1.1, 1.3, 1.2, 1.5)
+                sparkline = SparklineData(listOf(1.0, 1.2, 1.1, 1.3, 1.2, 1.5))
             )
         )
     }

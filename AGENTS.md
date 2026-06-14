@@ -139,3 +139,20 @@ A production-ready Android cryptocurrency dashboard showcasing SDE-2 level archi
 - **File Organization**: Strict package hierarchy mirrors architecture layers (presentation/data/domain)
 - **Resource<T>**: Sealed class for Success/Error/Loading, used in REST flows only; DB flow is direct List<>
 
+## Performance & Profiling Skills
+
+The project integrates AI-optimized instructions from `android/skills` to maintain high performance.
+
+### 1. Perfetto Trace Analysis
+- **Location**: `.skills/profilers/perfetto-trace-analysis.md`
+- **Focus**: Systematic diagnosis of latency and jank using "Chain of Evidence" scratchpads.
+- **Protocol**: Mandates wall-time vs. CPU-time verification and cross-process dependency tracking.
+
+### 2. R8 Optimization
+- **Location**: `.skills/performance/r8-analyzer.md`
+- **Focus**: Minifying APK size and improving build-time performance by pruning redundant Proguard rules.
+
+### 3. High-Frequency UI Optimization
+- **Location**: `.skills/performance-profiler.md`
+- **Focus**: Jetpack Compose specific strategies (Stability, `derivedStateOf`, and `key` usage) to handle 100+ ticker updates per second without UI stutter.
+

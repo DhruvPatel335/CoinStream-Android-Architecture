@@ -112,8 +112,8 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCoinRepository(
-        api: ApiService,
-        dao: CoinDao,
+        api: dagger.Lazy<ApiService>,
+        dao: dagger.Lazy<CoinDao>,
         database: CoinDatabase,
         webSocketClient: com.cryptocurrency.tracker.data.remote.websocket.BinanceWebSocketClient
     ): CoinRepository {
