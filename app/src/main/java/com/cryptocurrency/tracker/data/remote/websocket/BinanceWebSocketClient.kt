@@ -72,6 +72,27 @@ class BinanceWebSocketClient @Inject constructor(
         })
     }
 
+    /**
+     * Adds [symbol] to the active stream without disturbing other subscribers
+     * (e.g. a detail screen subscribing to a coin not currently visible on the list).
+     */
+    fun ensureSubscribed(symbol: String) {
+        val normalized = symbol.lowercase()
+        if (currentSymbols.any { it.lowercase() == normalized }) return
+        connect(currentSymbols + normalized)
+    }
+
+    /**
+     * Removes [symbol] from the active stream, leaving other subscribers untouched.
+     */
+    fun releaseSubscription(symbol: String) {
+        val normalized = symbol.lowercase()
+        val updated = currentSymbols.filterNot { it.lowercase() == normalized }
+        if (updated.size != currentSymbols.size && updated.isNotEmpty()) {
+            connect(updated)
+        }
+    }
+
     private fun handleReconnect() {
         if (isExplicitlyDisconnected) return
         
